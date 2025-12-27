@@ -1,0 +1,9 @@
+Django>=4.0
+djangorestframework>=3.13
+djangorestframework-simplejwt>=5.0
+psycopg2-binary>=2.9 # 如果使用PostgreSQL
+# mysqlclient>=2.1 # 如果使用MySQL
+gunicorn>=20.1
+pandas>=1.4
+openpyxl>=3.0
+python-decouple>=3.6 # 用于管理环境变量
