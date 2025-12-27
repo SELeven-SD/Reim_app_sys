@@ -115,6 +115,55 @@ python manage.py collectstatic
 gunicorn --bind 0.0.0.0:8000 reimbursement_system.wsgi:application
 ```
 
+### 配置开机自启动（推荐）
+
+1. 创建systemd服务文件：
+```bash
+sudo nano /etc/systemd/system/reimbursement.service
+```
+
+2. 添加以下内容：
+```ini
+[Unit]
+Description=Reimbursement System Gunicorn Daemon
+After=network.target
+
+[Service]
+User=your-username
+Group=your-username
+WorkingDirectory=/path/to/reimbursement-backend
+Environment="PATH=/path/to/reimbursement-backend/venv/bin"
+ExecStart=/path/to/reimbursement-backend/venv/bin/gunicorn \
+    --config /path/to/reimbursement-backend/gunicorn_config.py \
+    reimbursement_system.wsgi:application
+
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
+```
+
+3. 启用并启动服务：
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable reimbursement.service
+sudo systemctl start reimbursement.service
+```
+
+4. 检查服务状态：
+```bash
+sudo systemctl status reimbursement.service
+```
+
+5. 服务管理命令：
+```bash
+sudo systemctl start reimbursement    # 启动服务
+sudo systemctl stop reimbursement     # 停止服务
+sudo systemctl restart reimbursement  # 重启服务
+sudo systemctl status reimbursement   # 查看状态
+```
+
 ### 前端部署
 
 1. 安装依赖：
