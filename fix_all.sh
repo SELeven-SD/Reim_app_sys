@@ -39,7 +39,7 @@ echo "========================================="
 echo ""
 
 echo "【1】测试后台静态文件..."
-if curl -s -I http://211.87.236.61/static/admin/css/base.css | grep -q "200 OK"; then
+if curl -s -I http://211.87.236.94/static/admin/css/base.css | grep -q "200 OK"; then
     echo "✓ 后台CSS加载正常"
 else
     echo "✗ 后台CSS仍然有问题"
@@ -49,7 +49,7 @@ fi
 echo ""
 
 echo "【2】测试前端首页..."
-if curl -s -I http://211.87.236.61/ | grep -q "200 OK"; then
+if curl -s -I http://211.87.236.94/ | grep -q "200 OK"; then
     echo "✓ 前端首页访问正常"
 else
     echo "✗ 前端首页仍然有问题"
@@ -62,8 +62,8 @@ echo "========================================="
 echo ""
 echo "现在请在浏览器中访问："
 echo ""
-echo "  前端: http://211.87.236.61"
-echo "  后台: http://211.87.236.61/admin"
+echo "  前端: http://211.87.236.94"
+echo "  后台: http://211.87.236.94/admin"
 echo "    用户名: admin"
 echo "    密码: admin123"
 echo ""

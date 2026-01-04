@@ -9,4 +9,4 @@ sudo nginx -t && sudo systemctl reload nginx
 echo ""
 echo "✓ Nginx配置完成"
 echo ""
-echo "访问地址: http://211.87.236.61"
+echo "访问地址: http://211.87.236.94"

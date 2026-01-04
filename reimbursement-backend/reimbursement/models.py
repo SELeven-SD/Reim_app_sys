@@ -3,6 +3,8 @@ import os
 from uuid import uuid4
 from django.db import models
 from django.contrib.auth.models import User
+from django.db.models.signals import pre_delete, post_delete
+from django.dispatch import receiver
 from datetime import datetime
 
 def get_invoice_path(instance, filename):
@@ -18,7 +20,7 @@ class ReimbursementRequest(models.Model):
     real_name = models.CharField(max_length=100, verbose_name="真实姓名")
     reason = models.CharField(max_length=255, verbose_name="报销事由")
     amount = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="金额")
-    invoice_pdf = models.FileField(upload_to=get_invoice_path, verbose_name="发票PDF")
+    invoice_pdf = models.FileField(upload_to=get_invoice_path, verbose_name="发票PDF", blank=True, null=True)
     remarks = models.TextField(blank=True, verbose_name="备注")
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='pending', verbose_name="审核状态")
     rejection_reason = models.TextField(blank=True, verbose_name="不通过理由")
@@ -44,3 +46,14 @@ class Notice(models.Model):
     
     def __str__(self):
         return self.title
+
+# 信号处理：删除报销申请时自动删除关联的PDF文件
+@receiver(post_delete, sender=ReimbursementRequest)
+def delete_invoice_file(sender, instance, **kwargs):
+    """删除报销申请时，自动删除对应的发票PDF文件"""
+    if instance.invoice_pdf:
+        if os.path.isfile(instance.invoice_pdf.path):
+            try:
+                os.remove(instance.invoice_pdf.path)
+            except Exception as e:
+                print(f"删除文件失败: {instance.invoice_pdf.path}, 错误: {e}")

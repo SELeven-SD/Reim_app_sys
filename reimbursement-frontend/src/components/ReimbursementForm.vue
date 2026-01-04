@@ -1,6 +1,14 @@
 <template>
   <div class="form-container">
-    <h2>💰 提交报销申请</h2>
+    <h2>{{ isResubmit ? '📝 重新提交报销申请' : '💰 提交报销申请' }}</h2>
+    
+    <div v-if="isResubmit" class="resubmit-notice">
+      <svg viewBox="0 0 24 24" fill="currentColor">
+        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
+      </svg>
+      <span>您正在修改被驳回的申请，请修改后重新提交</span>
+    </div>
+    
     <form @submit.prevent="submitForm">
       <div v-if="serverError" class="error-message">
         <svg class="error-icon" viewBox="0 0 24 24" fill="currentColor">
@@ -25,7 +33,10 @@
       </div>
       <div class="form-group">
         <label for="invoice_pdf">📎 发票 (PDF格式，最大50MB)</label>
-        <input id="invoice_pdf" type="file" @change="handleFileUpload" accept="application/pdf" required>
+        <input id="invoice_pdf" type="file" @change="handleFileUpload" accept="application/pdf" :required="!isResubmit">
+        <div v-if="isResubmit && !formData.invoice_pdf" class="info-text">
+          💡 如需更换发票请重新上传，否则将保留原发票
+        </div>
          <div v-if="errors.invoice_pdf" class="error-text">{{ errors.invoice_pdf[0] }}</div>
       </div>
       <div class="form-group">
@@ -34,20 +45,42 @@
       </div>
       <button type="submit" :disabled="isLoading">
         <span v-if="isLoading">⏳ 提交中...</span>
-        <span v-else>✅ 提交审核</span>
+        <span v-else>✅ {{ isResubmit ? '重新提交审核' : '提交审核' }}</span>
       </button>
     </form>
   </div>
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { ref, onMounted } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 import axios from 'axios';
 
+const route = useRoute();
+const router = useRouter();
 const formData = ref({ real_name: '', reason: '', amount: '', remarks: '', invoice_pdf: null });
 const errors = ref({});
 const serverError = ref('');
 const isLoading = ref(false);
+const isResubmit = ref(false);
+const resubmitId = ref(null);
+
+// 检查是否是重新提交模式
+onMounted(() => {
+  if (route.query.resubmit === 'true' && route.query.id) {
+    isResubmit.value = true;
+    resubmitId.value = route.query.id;
+    
+    // 自动填充表单数据
+    formData.value.real_name = route.query.realName || '';
+    formData.value.reason = route.query.reason || '';
+    formData.value.amount = route.query.amount || '';
+    formData.value.remarks = route.query.remarks || '';
+    
+    // 清除URL参数以避免刷新时重复填充
+    router.replace({ path: '/', query: {} });
+  }
+});
 
 function handleFileUpload(event) {
   const file = event.target.files[0];
@@ -69,22 +102,50 @@ async function submitForm() {
   errors.value = {};
   serverError.value = '';
   
-  // 创建FormData并只添加非空值
-  let data = new FormData();
-  for (let key in formData.value) {
-    if (formData.value[key] !== null && formData.value[key] !== '') {
-      data.append(key, formData.value[key]);
-    }
-  }
-  
   try {
     const token = localStorage.getItem('access_token');
-    await axios.post('/api/reimbursements/', data, {
-      headers: { 'Content-Type': 'multipart/form-data', 'Authorization': `Bearer ${token}` }
-    });
-    alert('✅ 提交成功！您的报销申请已提交，请等待审核。');
-    formData.value = { real_name: '', reason: '', amount: '', remarks: '', invoice_pdf: null };
-    document.getElementById('invoice_pdf').value = null;
+    
+    if (isResubmit.value && resubmitId.value) {
+      // 重新提交：使用PATCH更新现有申请（部分更新）
+      const data = new FormData();
+      
+      // 添加基本字段
+      data.append('real_name', formData.value.real_name);
+      data.append('reason', formData.value.reason);
+      data.append('amount', formData.value.amount);
+      data.append('remarks', formData.value.remarks || '');
+      
+      // 只有在用户选择了新文件时才添加
+      if (formData.value.invoice_pdf instanceof File) {
+        data.append('invoice_pdf', formData.value.invoice_pdf);
+      }
+      
+      await axios.patch(`/api/reimbursements/${resubmitId.value}/`, data, {
+        headers: { 'Content-Type': 'multipart/form-data', 'Authorization': `Bearer ${token}` }
+      });
+      alert('✅ 重新提交成功！您的报销申请已更新，请等待审核。');
+      // 跳转到我的申请页面
+      router.push('/my-reimbursements');
+    } else {
+      // 新提交：使用POST创建新申请
+      const data = new FormData();
+      data.append('real_name', formData.value.real_name);
+      data.append('reason', formData.value.reason);
+      data.append('amount', formData.value.amount);
+      if (formData.value.remarks) data.append('remarks', formData.value.remarks);
+      
+      // 新提交必须有发票
+      if (formData.value.invoice_pdf) {
+        data.append('invoice_pdf', formData.value.invoice_pdf);
+      }
+      
+      await axios.post('/api/reimbursements/', data, {
+        headers: { 'Content-Type': 'multipart/form-data', 'Authorization': `Bearer ${token}` }
+      });
+      alert('✅ 提交成功！您的报销申请已提交，请等待审核。');
+      formData.value = { real_name: '', reason: '', amount: '', remarks: '', invoice_pdf: null };
+      document.getElementById('invoice_pdf').value = null;
+    }
   } catch (error) {
     if (error.response) {
       if (error.response.status === 400) {
@@ -92,6 +153,8 @@ async function submitForm() {
         serverError.value = '表单填写有误，请检查红色提示信息。';
       } else if (error.response.status === 401) {
         serverError.value = '您尚未登录或登录已过期。';
+      } else if (error.response.status === 403) {
+        serverError.value = error.response.data.detail || '没有权限修改此申请。';
       } else if (error.response.status === 413) {
         serverError.value = '文件太大！PDF发票文件不能超过50MB，请压缩后重新上传。';
       } else { 
@@ -108,138 +171,151 @@ async function submitForm() {
 
 <style scoped>
 .form-container { 
-  max-width: 650px; 
-  margin: 3rem auto; 
-  padding: 2.5rem; 
-  background: white;
-  border-radius: 16px; 
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.08);
-  transition: all 0.3s ease;
-}
-
-.form-container:hover {
-  box-shadow: 0 15px 50px rgba(0, 0, 0, 0.12);
+  max-width: 680px; 
+  margin: 2rem auto; 
+  padding: 2rem; 
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 8px; 
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(10px);
 }
 
 h2 {
-  text-align: center;
-  color: #2c3e50;
-  margin-bottom: 2.5rem;
-  font-size: 2rem;
-  font-weight: 700;
-  letter-spacing: -0.5px;
+  color: #1e293b;
+  margin-bottom: 1.75rem;
+  font-size: 1.5rem;
+  font-weight: 600;
+  letter-spacing: -0.3px;
+  padding-bottom: 1rem;
+  border-bottom: 2px solid #e5e7eb;
 }
 
 .form-group { 
-  margin-bottom: 2rem; 
+  margin-bottom: 1.5rem; 
 }
 
 label { 
   display: block; 
-  margin-bottom: 0.7rem; 
-  font-weight: 600;
-  color: #444;
-  font-size: 1rem;
+  margin-bottom: 0.5rem; 
+  font-weight: 500;
+  color: #374151;
+  font-size: 0.9rem;
 }
 
 input, textarea { 
   width: 100%; 
-  padding: 1rem 1.2rem; 
-  border: 2px solid #e8e8e8; 
-  border-radius: 10px; 
+  padding: 0.75rem; 
+  border: 1px solid #d1d5db; 
+  border-radius: 6px; 
   box-sizing: border-box;
-  font-size: 1rem;
-  transition: all 0.3s ease;
-  background: #fafafa;
+  font-size: 0.95rem;
+  transition: all 0.2s ease;
+  background: white;
   font-family: inherit;
 }
 
 input:focus, textarea:focus {
   outline: none;
-  border-color: #667eea;
-  background: white;
-  box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
-  transform: translateY(-2px);
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
 
 input[type="file"] {
-  padding: 0.9rem;
-  background: white;
+  padding: 0.75rem;
+  background: #f9fafb;
   cursor: pointer;
-  border: 2px dashed #d0d0d0;
+  border: 1px dashed #d1d5db;
 }
 
 input[type="file"]:hover {
-  border-color: #667eea;
+  border-color: #3b82f6;
+  background: white;
 }
 
 textarea {
-  min-height: 120px;
+  min-height: 100px;
   resize: vertical;
   line-height: 1.6;
 }
 
 button { 
   width: 100%; 
-  padding: 1.2rem; 
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  padding: 0.85rem; 
+  background: #3b82f6;
   color: white; 
   border: none; 
-  border-radius: 10px; 
+  border-radius: 6px; 
   cursor: pointer; 
-  font-size: 1.1rem;
-  font-weight: 600;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  font-size: 0.95rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
   margin-top: 1rem;
-  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
 }
 
 button:hover:not(:disabled) {
-  transform: translateY(-3px);
-  box-shadow: 0 8px 30px rgba(102, 126, 234, 0.5);
+  background: #2563eb;
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
 }
 
 button:active:not(:disabled) {
-  transform: translateY(-1px);
+  transform: scale(0.98);
 }
 
 button:disabled { 
-  background: linear-gradient(135deg, #ccc 0%, #aaa 100%);
+  background: #9ca3af;
   cursor: not-allowed;
-  transform: none;
-  box-shadow: none;
 }
 
 .error-message { 
-  color: white; 
-  background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
-  padding: 1rem 1.3rem; 
-  border-radius: 10px; 
-  margin-bottom: 2rem;
-  font-weight: 500;
-  box-shadow: 0 4px 15px rgba(231, 76, 60, 0.25);
+  color: #991b1b; 
+  background: #fef2f2;
+  padding: 0.75rem 1rem; 
+  border-radius: 6px; 
+  margin-bottom: 1.5rem;
+  font-size: 0.9rem;
+  border-left: 3px solid #dc2626;
   display: flex;
   align-items: center;
-  gap: 0.8rem;
+  gap: 0.5rem;
 }
 
 .error-icon {
-  width: 24px;
-  height: 24px;
+  width: 18px;
+  height: 18px;
   flex-shrink: 0;
+  color: #dc2626;
 }
 
 .error-text { 
-  color: #e74c3c; 
-  font-size: 0.88rem; 
-  margin-top: 0.5rem;
-  font-weight: 500;
-  display: flex;
-  align-items: center;
-  gap: 0.3rem;
+  color: #dc2626; 
+  font-size: 0.85rem; 
+  margin-top: 0.4rem;
 }
 
-.error-text::before {
-  content: '⚠️';
+.resubmit-notice {
+  background: #fef3c7;
+  color: #92400e;
+  padding: 0.75rem 1rem;
+  border-radius: 6px;
+  margin-bottom: 1.5rem;
+  font-size: 0.9rem;
+  border-left: 3px solid #f59e0b;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.resubmit-notice svg {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  color: #f59e0b;
+}
+
+.info-text {
+  color: #1e40af;
+  font-size: 0.85rem;
+  margin-top: 0.4rem;
 }
 </style>

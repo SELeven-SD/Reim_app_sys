@@ -64,15 +64,24 @@ class ReimbursementDetailView(generics.RetrieveUpdateDestroyAPIView):
         return ReimbursementRequestSerializer
     def update(self, request, *args, **kwargs):
         instance = self.get_object()
-        if instance.status != 'rejected':
-            return Response({"detail": "只有审核不通过的申请才能被修改。"}, status=status.HTTP_403_FORBIDDEN)
-        response = super().update(request, *args, **kwargs)
-        if response.status == 200:
-            instance.status = 'pending'
-            instance.rejection_reason = ""
-            instance.save()
-            response.data = ReimbursementRequestSerializer(instance).data
-        return response
+        # 允许待审核和审核不通过的申请被修改（审核通过的不能修改）
+        if instance.status == 'approved':
+            return Response({"detail": "审核通过的申请不能被修改。"}, status=status.HTTP_403_FORBIDDEN)
+        
+        # 强制使用partial更新，因为重新提交时可能不会上传新发票
+        partial = True
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        
+        # 更新成功后，重置状态为待审核，清空拒绝理由
+        instance.refresh_from_db()
+        instance.status = 'pending'
+        instance.rejection_reason = ""
+        instance.save()
+        
+        # 返回完整的序列化数据
+        return Response(ReimbursementRequestSerializer(instance).data)
 
 class NoticeListView(generics.ListAPIView):
     """获取所有启用的注意事项（无需认证）"""

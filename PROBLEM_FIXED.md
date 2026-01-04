@@ -61,22 +61,22 @@ sudo systemctl reload nginx
 
 ### 1. 测试后台静态文件
 ```bash
-curl -I http://211.87.236.61/static/admin/css/base.css
+curl -I http://211.87.236.94/static/admin/css/base.css
 # 应该返回: HTTP/1.1 200 OK
 ```
 
 ### 2. 测试前端
 ```bash
-curl -I http://211.87.236.61/
+curl -I http://211.87.236.94/
 # 应该返回: HTTP/1.1 200 OK
 ```
 
 ### 3. 浏览器访问
-- 后台：http://211.87.236.61/admin
+- 后台：http://211.87.236.94/admin
   - 现在应该看到完整的蓝色Django管理界面
   - 有图标、按钮、样式等
 
-- 前端：http://211.87.236.61
+- 前端：http://211.87.236.94
   - 应该正常显示Vue应用
 
 ---
@@ -130,8 +130,8 @@ bash /home/lionp/app_bx/fix_all.sh
 
 **从您的个人电脑（192网段）访问：**
 
-- 前端应用：http://211.87.236.61
-- 后台管理：http://211.87.236.61/admin
+- 前端应用：http://211.87.236.94
+- 后台管理：http://211.87.236.94/admin
   - 用户名: admin
   - 密码: admin123
 

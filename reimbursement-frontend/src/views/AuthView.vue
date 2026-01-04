@@ -1,7 +1,14 @@
 <template>
-  <div class="auth-container">
+  <div class="auth-container" :style="containerStyle">
     <div class="auth-box">
-      <h2>{{ isLogin ? '用户登录' : '用户注册' }}</h2>
+      <div class="logo-section">
+        <div class="combined-logo">
+          <div class="logo-circle">
+            <span class="logo-text">CISLC</span>
+          </div>
+        </div>
+        <h2>{{ isLogin ? '用户登录' : '用户注册' }}</h2>
+      </div>
       
       <form @submit.prevent="handleSubmit">
         <div v-if="errorMessage" class="error-message">{{ errorMessage }}</div>
@@ -81,9 +88,10 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import axios from 'axios';
+import bgImage from '@/assets/sdu_software.png';
 
 const router = useRouter();
 const isLogin = ref(true);
@@ -98,6 +106,15 @@ const formData = ref({
   email: '',
   real_name: ''
 });
+
+// 背景样式
+const containerStyle = computed(() => ({
+  backgroundImage: `linear-gradient(135deg, rgba(10, 36, 99, 0.35) 0%, rgba(30, 64, 175, 0.30) 50%, rgba(59, 130, 246, 0.25) 100%), url(${bgImage})`,
+  backgroundSize: 'cover',
+  backgroundPosition: 'center',
+  backgroundRepeat: 'no-repeat',
+  backgroundAttachment: 'fixed'
+}));
 
 // 切换登录/注册模式
 function toggleMode() {
@@ -162,9 +179,12 @@ async function handleLogin() {
     
     successMessage.value = '登录成功！';
     
-    // 跳转到首页
+    // 跳转到首页，使用replace避免缓存问题
     setTimeout(() => {
-      router.push('/');
+      router.push('/').then(() => {
+        // 强制刷新页面以加载注意事项
+        window.location.reload();
+      });
     }, 1000);
   } catch (error) {
     if (error.response) {
@@ -224,28 +244,129 @@ async function handleRegister() {
 
 <style scoped>
 .auth-container {
-  min-height: 80vh;
+  min-height: 100vh;
   display: flex;
   justify-content: center;
   align-items: center;
   padding: 2rem;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  /* 山东大学校园实景背景 - 通过内联样式设置 */
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  overflow-y: auto;
 }
 
 .auth-box {
-  background: white;
-  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.28), rgba(254, 249, 235, 0.25));
+  border-radius: 16px;
   padding: 2.5rem;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+  box-shadow: 
+    0 20px 60px rgba(10, 36, 99, 0.3), 
+    0 0 0 1px rgba(251, 191, 36, 0.6),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5);
   width: 100%;
-  max-width: 420px;
+  max-width: 460px;
+  position: relative;
+  z-index: 1;
+  border: 2px solid rgba(251, 191, 36, 0.5);
+  backdrop-filter: blur(6px);
+}
+
+/* 添加顶部装饰 */
+.auth-box::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 5px;
+  background: linear-gradient(to right, #0a2463 0%, #3b82f6 50%, #fbbf24 100%);
+  border-radius: 16px 16px 0 0;
+}
+
+/* Logo区域 */
+.logo-section {
+  text-align: center;
+  margin-bottom: 2rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 2px solid rgba(59, 130, 246, 0.1);
+}
+
+.combined-logo {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 1rem;
+}
+
+.logo-circle {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #0a2463, #3b82f6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 
+    0 8px 24px rgba(10, 36, 99, 0.4),
+    0 0 0 4px rgba(251, 191, 36, 0.2);
+  position: relative;
+  animation: pulse 3s ease-in-out infinite;
+}
+
+.logo-circle::after {
+  content: '';
+  position: absolute;
+  inset: -8px;
+  border-radius: 50%;
+  border: 2px solid rgba(251, 191, 36, 0.3);
+  animation: rotate 6s linear infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    box-shadow: 
+      0 8px 24px rgba(10, 36, 99, 0.4),
+      0 0 0 4px rgba(251, 191, 36, 0.2);
+  }
+  50% {
+    box-shadow: 
+      0 12px 32px rgba(10, 36, 99, 0.5),
+      0 0 0 6px rgba(251, 191, 36, 0.35);
+  }
+}
+
+@keyframes rotate {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.logo-text {
+  font-size: 1.4rem;
+  font-weight: 900;
+  color: #fbbf24;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  font-family: 'Arial', 'Helvetica', sans-serif;
+  letter-spacing: 1px;
 }
 
 h2 {
   text-align: center;
-  color: #2c3e50;
-  margin-bottom: 2rem;
-  font-size: 1.8rem;
+  color: #0a2463;
+  margin: 0;
+  font-size: 2rem;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-shadow: 0 2px 4px rgba(10, 36, 99, 0.1);
 }
 
 .form-group {
@@ -254,80 +375,142 @@ h2 {
 
 label {
   display: block;
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.6rem;
   font-weight: 600;
-  color: #555;
+  color: #1e40af;
+  font-size: 0.9rem;
 }
 
 input {
   width: 100%;
-  padding: 0.9rem;
-  border: 2px solid #e0e0e0;
-  border-radius: 6px;
-  font-size: 1rem;
-  transition: border-color 0.3s;
+  padding: 0.85rem 1rem;
+  border: 2px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  transition: all 0.3s ease;
   box-sizing: border-box;
+  background: white;
 }
 
 input:focus {
   outline: none;
-  border-color: #667eea;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15), 0 2px 8px rgba(59, 130, 246, 0.1);
+}
+
+input::placeholder {
+  color: #9ca3af;
 }
 
 .submit-btn {
   width: 100%;
   padding: 1rem;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #1e40af 0%, #3b82f6 50%, #1e40af 100%);
+  background-size: 200% 100%;
   color: white;
   border: none;
-  border-radius: 6px;
-  font-size: 1.1rem;
-  font-weight: 600;
+  border-radius: 10px;
+  font-size: 1.05rem;
+  font-weight: 700;
   cursor: pointer;
-  transition: transform 0.2s, box-shadow 0.2s;
+  transition: all 0.4s ease;
+  box-shadow: 0 4px 16px rgba(30, 64, 175, 0.4);
+  letter-spacing: 1px;
+  position: relative;
+  overflow: hidden;
+}
+
+.submit-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+  transition: left 0.5s;
+}
+
+.submit-btn:hover:not(:disabled)::before {
+  left: 100%;
 }
 
 .submit-btn:hover:not(:disabled) {
+  background-position: 100% 0;
+  box-shadow: 0 8px 24px rgba(10, 36, 99, 0.6);
   transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+}
+
+.submit-btn:active:not(:disabled) {
+  transform: translateY(0);
 }
 
 .submit-btn:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+  transform: none;
 }
 
 .switch-mode {
   text-align: center;
-  margin-top: 1.5rem;
-  color: #666;
+  margin-top: 1.8rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid rgba(59, 130, 246, 0.1);
+  color: #000000;
+  font-size: 0.9rem;
 }
 
 .switch-mode a {
-  color: #667eea;
+  color: #1e40af;
   text-decoration: none;
   font-weight: 600;
+  transition: color 0.2s ease;
 }
 
 .switch-mode a:hover {
+  color: #3b82f6;
   text-decoration: underline;
 }
 
 .error-message {
-  background-color: #fee;
-  color: #c33;
-  padding: 1rem;
-  border-radius: 6px;
-  margin-bottom: 1rem;
-  border-left: 4px solid #c33;
+  background: linear-gradient(135deg, #fef2f2, #fee2e2);
+  color: #991b1b;
+  padding: 0.85rem 1rem;
+  border-radius: 8px;
+  margin-bottom: 1.2rem;
+  border-left: 4px solid #dc2626;
+  font-size: 0.9rem;
+  box-shadow: 0 2px 8px rgba(220, 38, 38, 0.1);
 }
 
 .success-message {
-  background-color: #efe;
-  color: #3c3;
-  padding: 1rem;
-  border-radius: 6px;
-  margin-bottom: 1rem;
-  border-left: 4px solid #3c3;
+  background: linear-gradient(135deg, #d1fae5, #a7f3d0);
+  color: #065f46;
+  padding: 0.85rem 1rem;
+  border-radius: 8px;
+  margin-bottom: 1.2rem;
+  border-left: 4px solid #059669;
+  font-size: 0.9rem;
+  box-shadow: 0 2px 8px rgba(5, 150, 105, 0.1);
+}
+
+/* 响应式调整 */
+@media (max-width: 768px) {
+  .auth-box {
+    padding: 2rem 1.5rem;
+  }
+  
+  .logo-circle {
+    width: 70px;
+    height: 70px;
+  }
+  
+  .logo-text {
+    font-size: 1.3rem;
+  }
+  
+  h2 {
+    font-size: 1.75rem;
+  }
 }
 </style>

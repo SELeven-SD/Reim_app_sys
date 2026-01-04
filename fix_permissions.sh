@@ -30,7 +30,7 @@ echo "✓ 权限修复完成"
 echo ""
 
 echo "【2】测试静态文件访问..."
-if curl -s -I http://211.87.236.61/static/admin/css/base.css | grep -q "200 OK"; then
+if curl -s -I http://211.87.236.94/static/admin/css/base.css | grep -q "200 OK"; then
     echo "✓ 静态文件访问正常"
 else
     echo "✗ 静态文件仍无法访问，检查Nginx错误日志："
@@ -47,6 +47,6 @@ echo "========================================="
 echo "测试访问"
 echo "========================================="
 echo ""
-echo "1. 前端: http://211.87.236.61"
-echo "2. 后台: http://211.87.236.61/admin (应该有样式了)"
+echo "1. 前端: http://211.87.236.94"
+echo "2. 后台: http://211.87.236.94/admin (应该有样式了)"
 echo ""

@@ -16,14 +16,14 @@ class RestrictedAdminSite(AdminSite):
     def has_permission(self, request):
         """
         检查用户是否有权限访问后台
-        只允许超级用户或被指定为 staff 的用户登录
+        只允许超级用户登录
         """
         # 用户必须已认证
         if not request.user.is_authenticated:
             return False
         
-        # 只允许超级用户或管理员访问
-        return request.user.is_active and (request.user.is_superuser or request.user.is_staff)
+        # 只允许超级用户访问
+        return request.user.is_active and request.user.is_superuser
     
     def login(self, request, extra_context=None):
         """

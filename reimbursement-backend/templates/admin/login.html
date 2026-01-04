@@ -1,0 +1,109 @@
+{% extends "admin/login.html" %}
+{% load static %}
+
+{% block extrastyle %}
+{{ block.super }}
+<style>
+    /* 使用与前端相同的背景图片 */
+    body::before {
+        content: '';
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-image: 
+            linear-gradient(135deg, rgba(10, 36, 99, 0.35) 0%, rgba(30, 64, 175, 0.30) 50%, rgba(59, 130, 246, 0.25) 100%),
+            url('{% static "admin/img/sdu_software.png" %}');
+        background-size: cover;
+        background-position: center;
+        background-repeat: no-repeat;
+        background-attachment: fixed;
+        z-index: -1;
+    }
+    
+    body {
+        background: transparent !important;
+    }
+    
+    /* 让登录框更透明，与前端一致 */
+    #content {
+        background: linear-gradient(135deg, rgba(255, 255, 255, 0.28), rgba(254, 249, 235, 0.25)) !important;
+        border-radius: 16px !important;
+        padding: 2.5rem !important;
+        box-shadow: 
+            0 20px 60px rgba(10, 36, 99, 0.3), 
+            0 0 0 1px rgba(251, 191, 36, 0.6),
+            inset 0 1px 0 rgba(255, 255, 255, 0.5) !important;
+        border: 2px solid rgba(251, 191, 36, 0.5) !important;
+        backdrop-filter: blur(6px);
+        -webkit-backdrop-filter: blur(6px);
+    }
+    
+    #content::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 5px;
+        background: linear-gradient(to right, #0a2463 0%, #3b82f6 50%, #fbbf24 100%);
+        border-radius: 16px 16px 0 0;
+    }
+    
+    #header {
+        background: linear-gradient(135deg, rgba(10, 36, 99, 0.85), rgba(30, 64, 175, 0.85)) !important;
+        border-bottom: 3px solid rgba(251, 191, 36, 0.6) !important;
+    }
+    
+    #header h1, #header h1 a {
+        color: #fbbf24 !important;
+        text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+    }
+    
+    /* 输入框样式优化 */
+    input[type="text"], input[type="password"] {
+        background: rgba(255, 255, 255, 0.9) !important;
+        border: 2px solid #e5e7eb !important;
+        border-radius: 8px !important;
+        padding: 0.75rem !important;
+    }
+    
+    input[type="text"]:focus, input[type="password"]:focus {
+        border-color: #3b82f6 !important;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15) !important;
+        outline: none !important;
+    }
+    
+    /* 登录按钮样式 */
+    .submit-row input[type="submit"] {
+        background: linear-gradient(135deg, #1e40af 0%, #3b82f6 50%, #1e40af 100%) !important;
+        border: none !important;
+        border-radius: 10px !important;
+        padding: 0.8rem 2rem !important;
+        color: white !important;
+        font-weight: 700 !important;
+        box-shadow: 0 4px 16px rgba(30, 64, 175, 0.4) !important;
+        transition: all 0.3s ease !important;
+    }
+    
+    .submit-row input[type="submit"]:hover {
+        box-shadow: 0 8px 24px rgba(10, 36, 99, 0.6) !important;
+        transform: translateY(-2px);
+    }
+    
+    /* 表单标签样式 */
+    label {
+        color: #1e40af !important;
+        font-weight: 600 !important;
+    }
+    
+    /* 错误消息样式 */
+    .errornote {
+        background: linear-gradient(135deg, #fef2f2, #fee2e2) !important;
+        color: #991b1b !important;
+        border-left: 4px solid #dc2626 !important;
+        border-radius: 8px !important;
+    }
+</style>
+{% endblock %}

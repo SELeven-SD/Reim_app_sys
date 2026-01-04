@@ -39,7 +39,7 @@ ROOT_URLCONF = 'reimbursement_system.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [BASE_DIR / 'templates'],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -66,7 +66,8 @@ USE_TZ = True
 
 STATIC_URL = 'static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
-MEDIA_URL = '/media/'
+STATICFILES_DIRS = [BASE_DIR / 'static']
+MEDIA_URL = '/api/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
@@ -82,10 +83,22 @@ SIMPLE_JWT = {
 
 # CORS 配置 - 允许所有192网段访问
 CORS_ALLOWED_ORIGIN_REGEXES = [
-    r"^http://211\.87\.236\.61$",
-    r"^http://192\.168\.\d{1,3}\.\d{1,3}$",
-    r"^http://localhost:\d+$",
-    r"^http://127\.0\.0\.1:\d+$",
+    r"^http://211\.87\.236\.94(:\d+)?$",
+    r"^http://192\.168\.\d{1,3}\.\d{1,3}(:\d+)?$",
+    r"^http://localhost(:\d+)?$",
+    r"^http://127\.0\.0\.1(:\d+)?$",
 ]
 
 CORS_ALLOW_CREDENTIALS = True
+
+# CSRF 配置 - 信任的来源（Django 4.0+必需）
+CSRF_TRUSTED_ORIGINS = [
+    'http://211.87.236.94',
+    'http://211.87.236.94:8088',
+    'http://127.0.0.1:8000',
+    'http://localhost:8000',
+]
+
+# 使用Nginx代理的Host头
+USE_X_FORWARDED_HOST = True
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')

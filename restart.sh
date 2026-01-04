@@ -13,7 +13,7 @@ sleep 2
 
 # 启动新的后端服务
 echo "启动后端服务..."
-cd /home/lionp/app_bx/reimbursement-backend
+cd /home/lionp/Reim_app_sys/reimbursement-backend
 source venv/bin/activate
 nohup gunicorn --bind 0.0.0.0:8000 --config gunicorn_config.py reimbursement_system.wsgi:application > /tmp/gunicorn.log 2>&1 &
 BACKEND_PID=$!
@@ -33,5 +33,5 @@ echo "配置Nginx（需要sudo权限）"
 echo "========================================="
 echo ""
 echo "执行以下命令："
-echo "bash /home/lionp/app_bx/setup_nginx.sh"
+echo "bash /home/lionp/Reim_app_sys/setup_nginx.sh"
 echo ""

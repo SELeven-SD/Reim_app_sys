@@ -177,7 +177,7 @@ class ReimbursementRequestAdmin(admin.ModelAdmin):
                 req.submission_date.strftime('%Y-%m-%d'),
                 req.real_name,
                 req.reason,
-                -float(req.amount),  # 负数形式
+                -float(req.amount),  # 负数形式，方便计算
                 req.remarks or ''
             ])
         
@@ -188,10 +188,10 @@ class ReimbursementRequestAdmin(admin.ModelAdmin):
         ws.column_dimensions['D'].width = 12
         ws.column_dimensions['E'].width = 40
         
-        # 设置金额列格式为负数货币格式
+        # 设置金额列格式为标准数字格式（带两位小数）
         for row in range(2, ws.max_row + 1):
             cell = ws.cell(row=row, column=4)
-            cell.number_format = '-0.00'
+            cell.number_format = '#,##0.00'
             cell.alignment = Alignment(horizontal='right')
         
         # 保存到内存

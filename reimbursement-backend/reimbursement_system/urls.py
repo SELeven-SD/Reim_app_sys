@@ -14,5 +14,5 @@ urlpatterns = [
     path('api/reimbursements/', include('reimbursement.urls')),
 ]
 
-if settings.DEBUG:
-    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+# 生产环境也需要提供media文件访问
+urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

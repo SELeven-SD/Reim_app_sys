@@ -1,27 +1,76 @@
 @import './base.css';
 
+html,
 body {
-  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  /* 山东大学主题配色：深蓝渐变配合金色点缀 */
+  background: linear-gradient(135deg, 
+    #0a2463 0%,      /* 深蓝 */
+    #1e40af 25%,     /* 山大蓝 */
+    #3b82f6 50%,     /* 明亮蓝 */
+    #60a5fa 75%,     /* 天空蓝 */
+    #93c5fd 100%     /* 浅蓝 */
+  );
   min-height: 100vh;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  color: #1e293b;
+  background-attachment: fixed;
+  background-size: cover;
+  background-repeat: no-repeat;
+  position: relative;
+}
+
+/* 添加山东大学风格的装饰性背景图案 */
+html::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-image: 
+    radial-gradient(circle at 20% 30%, rgba(251, 191, 36, 0.08) 0%, transparent 50%),
+    radial-gradient(circle at 80% 70%, rgba(59, 130, 246, 0.1) 0%, transparent 50%),
+    radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.05) 0%, transparent 30%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* 添加校徽样式的装饰元素 */
+html::after {
+  content: '山东大学 Shandong University';
+  position: fixed;
+  bottom: 20px;
+  right: 30px;
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.15);
+  font-weight: 500;
+  letter-spacing: 1px;
+  pointer-events: none;
+  z-index: 0;
 }
 
 #app {
-  max-width: 1400px;
   margin: 0 auto;
   font-weight: normal;
+  min-height: 100vh;
+  position: relative;
+  z-index: 1;
 }
 
 a,
 .green {
   text-decoration: none;
-  color: hsla(160, 100%, 37%, 1);
+  color: #3b82f6;
   transition: 0.4s;
   padding: 3px;
 }
 
 @media (hover: hover) {
   a:hover {
-    background-color: hsla(160, 100%, 37%, 0.2);
+    background-color: rgba(59, 130, 246, 0.15);
+    color: #1e40af;
   }
 }
 
@@ -32,3 +81,4 @@ a,
     padding: 0 2rem;
   }
 }
+

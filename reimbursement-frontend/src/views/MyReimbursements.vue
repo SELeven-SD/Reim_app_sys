@@ -91,8 +91,23 @@
           </div>
         </div>
         
+        <!-- 待审核状态 - 可以撤回修改 -->
+        <div v-if="item.status === 'pending'" class="pending-alert">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/>
+            <path d="M12 6v6l4 2"/>
+          </svg>
+          <span>申请正在审核中...</span>
+          <button @click="handleResubmit(item.id)" class="withdraw-btn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M11 19l-7-7 7-7m8 14l-7-7 7-7"/>
+            </svg>
+            撤回修改
+          </button>
+        </div>
+        
         <!-- 审核不通过 -->
-        <div v-if="item.status === 'rejected' && item.rejection_reason" class="rejection-alert">
+        <div v-if="item.status === 'rejected'" class="rejection-alert">
           <div class="alert-header">
             <svg viewBox="0 0 24 24" fill="currentColor">
               <circle cx="12" cy="12" r="10"/>
@@ -100,7 +115,8 @@
             </svg>
             <strong>审核未通过</strong>
           </div>
-          <p class="rejection-reason">{{ item.rejection_reason }}</p>
+          <p v-if="item.rejection_reason" class="rejection-reason">{{ item.rejection_reason }}</p>
+          <p v-else class="rejection-reason">审核未通过，请修改后重新提交。</p>
           <button @click="handleResubmit(item.id)" class="resubmit-btn">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M3 12a9 9 0 019-9 9.75 9.75 0 016.74 2.74L21 8"/>
@@ -194,8 +210,22 @@ function getStatusClass(status) {
 }
 
 function handleResubmit(id) {
-  router.push('/');
-  alert('请重新填写报销申请信息');
+  // 找到要重新提交的申请
+  const item = reimbursements.value.find(r => r.id === id);
+  if (item) {
+    // 将申请数据传递到首页进行编辑
+    router.push({
+      path: '/',
+      query: {
+        resubmit: 'true',
+        id: item.id,
+        realName: item.real_name,
+        reason: item.reason,
+        amount: item.amount,
+        remarks: item.remarks || ''
+      }
+    });
+  }
 }
 
 onMounted(() => {
@@ -205,9 +235,9 @@ onMounted(() => {
 
 <style scoped>
 .list-container {
-  max-width: 1100px;
+  max-width: 1400px;
   margin: 0 auto;
-  padding: 2.5rem 2rem;
+  padding: 2rem;
   min-height: 80vh;
 }
 
@@ -215,41 +245,44 @@ onMounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 2.5rem;
+  margin-bottom: 2rem;
+  padding-bottom: 1rem;
+  border-bottom: 2px solid #e5e7eb;
 }
 
 h2 {
-  color: #2c3e50;
-  font-size: 2rem;
-  font-weight: 700;
+  color: #1e293b;
+  font-size: 1.75rem;
+  font-weight: 600;
   margin: 0;
-  letter-spacing: -0.5px;
+  letter-spacing: -0.3px;
 }
 
 .refresh-button {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.7rem 1.3rem;
-  background: white;
-  border: 2px solid #e0e0e0;
-  border-radius: 8px;
-  color: #667eea;
-  font-weight: 600;
+  padding: 0.6rem 1.2rem;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  color: #374151;
+  font-weight: 500;
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition: all 0.2s ease;
+  font-size: 0.9rem;
+  backdrop-filter: blur(10px);
 }
 
 .refresh-button svg {
-  width: 18px;
-  height: 18px;
+  width: 16px;
+  height: 16px;
 }
 
 .refresh-button:hover {
-  border-color: #667eea;
-  background: #f5f7ff;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
+  border-color: #3b82f6;
+  color: #3b82f6;
+  background: #eff6ff;
 }
 
 .loading {
@@ -279,23 +312,23 @@ h2 {
 }
 
 .error-message {
-  background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
-  color: white;
-  padding: 1.2rem;
-  border-radius: 12px;
+  background: #fef2f2;
+  color: #991b1b;
+  padding: 1rem;
+  border-radius: 6px;
   text-align: center;
   margin-bottom: 2rem;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 0.8rem;
-  font-weight: 500;
-  box-shadow: 0 4px 15px rgba(231, 76, 60, 0.25);
+  gap: 0.75rem;
+  border: 1px solid #fecaca;
+  border-left: 3px solid #dc2626;
 }
 
 .error-message svg {
-  width: 24px;
-  height: 24px;
+  width: 20px;
+  height: 20px;
 }
 
 .empty-message {
@@ -311,66 +344,68 @@ h2 {
 }
 
 .empty-message h3 {
-  font-size: 1.6rem;
-  color: #2c3e50;
-  margin-bottom: 0.8rem;
+  font-size: 1.5rem;
+  color: #1e293b;
+  margin-bottom: 0.75rem;
+  font-weight: 600;
 }
 
 .empty-message p {
-  color: #666;
-  font-size: 1.1rem;
-  margin-bottom: 2.5rem;
+  color: #64748b;
+  font-size: 1rem;
+  margin-bottom: 2rem;
 }
 
 .link-button {
   display: inline-flex;
   align-items: center;
-  gap: 0.6rem;
-  padding: 0.9rem 1.8rem;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  background: #3b82f6;
   color: white;
   text-decoration: none;
-  border-radius: 10px;
-  font-weight: 600;
-  font-size: 1.05rem;
-  transition: all 0.3s ease;
-  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+  border-radius: 6px;
+  font-weight: 500;
+  font-size: 0.95rem;
+  transition: all 0.2s ease;
 }
 
 .link-button svg {
-  width: 20px;
-  height: 20px;
+  width: 18px;
+  height: 18px;
 }
 
 .link-button:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 8px 25px rgba(102, 126, 234, 0.5);
+  background: #2563eb;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
 }
 
 .reimbursement-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(500px, 1fr));
-  gap: 2rem;
+  grid-template-columns: repeat(auto-fill, minmax(480px, 1fr));
+  gap: 1.5rem;
 }
 
 .reimbursement-card {
-  background: white;
-  border-radius: 16px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
   overflow: hidden;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  border: 1px solid #f0f0f0;
+  transition: all 0.2s ease;
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(10px);
 }
 
 .reimbursement-card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 12px 35px rgba(0, 0, 0, 0.12);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  border-color: rgba(59, 130, 246, 0.3);
+  transform: translateY(-2px);
 }
 
 .card-header {
-  padding: 1.5rem;
-  background: linear-gradient(135deg, #f8f9ff 0%, #f0f2ff 100%);
-  border-bottom: 1px solid #e8ecff;
+  padding: 1.25rem;
+  background: #f9fafb;
+  border-bottom: 1px solid #e5e7eb;
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
@@ -381,72 +416,75 @@ h2 {
 }
 
 .card-header h3 {
-  margin: 0 0 0.6rem 0;
-  color: #2c3e50;
-  font-size: 1.3rem;
-  font-weight: 700;
+  margin: 0 0 0.5rem 0;
+  color: #1e293b;
+  font-size: 1.1rem;
+  font-weight: 600;
 }
 
 .amount {
   display: inline-block;
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: #667eea;
+  font-size: 1.4rem;
+  font-weight: 600;
+  color: #3b82f6;
 }
 
 .status-badge {
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
-  padding: 0.5rem 1rem;
-  border-radius: 20px;
-  font-size: 0.9rem;
-  font-weight: 600;
+  padding: 0.4rem 0.85rem;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  font-weight: 500;
   white-space: nowrap;
 }
 
 .status-icon {
-  font-size: 1.1rem;
+  font-size: 1rem;
 }
 
 .status-pending {
-  background: #fff3cd;
-  color: #856404;
+  background: #fef3c7;
+  color: #92400e;
+  border: 1px solid #fbbf24;
 }
 
 .status-approved {
-  background: #d4edda;
-  color: #155724;
+  background: #d1fae5;
+  color: #065f46;
+  border: 1px solid #34d399;
 }
 
 .status-rejected {
-  background: #f8d7da;
-  color: #721c24;
+  background: #fee2e2;
+  color: #991b1b;
+  border: 1px solid #f87171;
 }
 
 .card-body {
-  padding: 1.5rem;
+  padding: 1.25rem;
 }
 
 .info-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 1.2rem;
-  margin-bottom: 1.2rem;
+  gap: 1.25rem;
+  margin-bottom: 1.25rem;
 }
 
 .info-item {
   display: flex;
   align-items: flex-start;
-  gap: 0.8rem;
+  gap: 0.75rem;
 }
 
 .info-item svg {
   width: 20px;
   height: 20px;
-  color: #667eea;
+  color: #6b7280;
   flex-shrink: 0;
-  margin-top: 0.2rem;
+  margin-top: 0.1rem;
 }
 
 .info-item div {
@@ -467,92 +505,147 @@ h2 {
 
 .remarks {
   display: flex;
-  gap: 0.8rem;
+  gap: 0.75rem;
   padding: 1rem;
-  background: #f8f9fa;
-  border-radius: 8px;
+  background: rgba(249, 250, 251, 0.8);
+  border-radius: 6px;
   margin-top: 1rem;
-  font-size: 0.95rem;
-  color: #555;
+  font-size: 0.9rem;
+  color: #4b5563;
   line-height: 1.6;
+  border: 1px solid rgba(229, 231, 235, 0.5);
 }
 
 .remarks svg {
-  width: 20px;
-  height: 20px;
-  color: #667eea;
+  width: 18px;
+  height: 18px;
+  color: #6b7280;
   flex-shrink: 0;
   margin-top: 0.1rem;
 }
 
 .pdf-link-container {
-  margin-top: 1.2rem;
+  margin-top: 1.25rem;
 }
 
 .pdf-link {
   display: inline-flex;
   align-items: center;
-  gap: 0.6rem;
-  padding: 0.7rem 1.2rem;
-  background: #667eea;
+  gap: 0.5rem;
+  padding: 0.6rem 1.1rem;
+  background: #3b82f6;
   color: white;
   text-decoration: none;
-  border-radius: 8px;
-  font-weight: 600;
-  font-size: 0.95rem;
-  transition: all 0.3s ease;
+  border-radius: 6px;
+  font-weight: 500;
+  font-size: 0.9rem;
+  transition: all 0.2s ease;
 }
 
 .pdf-link svg {
-  width: 18px;
-  height: 18px;
+  width: 16px;
+  height: 16px;
 }
 
 .pdf-link:hover {
-  background: #764ba2;
-  transform: translateX(4px);
+  background: #2563eb;
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
 }
 
 .rejection-alert {
-  margin-top: 1.5rem;
-  padding: 1.2rem;
-  background: linear-gradient(135deg, #fff5f5 0%, #ffe5e5 100%);
-  border: 2px solid #f8d7da;
-  border-radius: 12px;
+  margin-top: 1.25rem;
+  padding: 1rem;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-left: 3px solid #dc2626;
+  border-radius: 6px;
+}
+
+.pending-alert {
+  margin-top: 1.25rem;
+  padding: 1rem;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-left: 3px solid #3b82f6;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  color: #1e40af;
+  font-weight: 500;
+  font-size: 0.9rem;
+}
+
+.pending-alert svg {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+.pending-alert span {
+  flex: 1;
+}
+
+.withdraw-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 1.1rem;
+  background: #3b82f6;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-weight: 500;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.withdraw-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+.withdraw-btn:hover {
+  background: #2563eb;
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
 }
 
 .alert-header {
   display: flex;
   align-items: center;
-  gap: 0.7rem;
-  margin-bottom: 0.8rem;
-  color: #721c24;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+  color: #991b1b;
+  font-weight: 500;
 }
 
 .alert-header svg {
-  width: 22px;
-  height: 22px;
+  width: 18px;
+  height: 18px;
 }
 
 .rejection-reason {
-  color: #721c24;
+  color: #991b1b;
   margin: 0 0 1rem 0;
   line-height: 1.6;
-  font-size: 0.95rem;
+  font-size: 0.9rem;
 }
 
 .resubmit-btn {
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.7rem 1.2rem;
-  background: #e74c3c;
+  padding: 0.6rem 1.1rem;
+  background: #dc2626;
   color: white;
   border: none;
-  border-radius: 8px;
-  font-weight: 600;
+  border-radius: 6px;
+  font-weight: 500;
+  font-size: 0.9rem;
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition: all 0.2s ease;
 }
 
 .resubmit-btn svg {
@@ -561,27 +654,28 @@ h2 {
 }
 
 .resubmit-btn:hover {
-  background: #c0392b;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(231, 76, 60, 0.3);
+  background: #b91c1c;
+  box-shadow: 0 2px 8px rgba(220, 38, 38, 0.3);
 }
 
 .success-alert {
-  margin-top: 1.5rem;
-  padding: 1rem 1.2rem;
-  background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
-  border: 2px solid #c3e6cb;
-  border-radius: 12px;
+  margin-top: 1.25rem;
+  padding: 1rem;
+  background: #d1fae5;
+  border: 1px solid #6ee7b7;
+  border-left: 3px solid #059669;
+  border-radius: 6px;
   display: flex;
   align-items: center;
-  gap: 0.8rem;
-  color: #155724;
-  font-weight: 600;
+  gap: 0.75rem;
+  color: #065f46;
+  font-weight: 500;
+  font-size: 0.9rem;
 }
 
 .success-alert svg {
-  width: 24px;
-  height: 24px;
+  width: 18px;
+  height: 18px;
   flex-shrink: 0;
 }
 
