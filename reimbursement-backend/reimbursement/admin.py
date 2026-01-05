@@ -14,20 +14,20 @@ from .admin_site import restricted_admin_site
 
 @admin.register(ReimbursementRequest, site=restricted_admin_site)
 class ReimbursementRequestAdmin(admin.ModelAdmin):
-    list_display = ('submission_date', 'real_name', 'reason', 'amount', 'status', 'user', 'download_link', 'pdf_file_link')
-    list_filter = ('status', 'submission_date')
+    list_display = ('submission_date', 'real_name', 'reason', 'amount', 'is_taxi_invoice', 'status', 'user', 'download_link', 'itinerary_download_link', 'pdf_file_link')
+    list_filter = ('status', 'is_taxi_invoice', 'submission_date')
     search_fields = ('real_name', 'reason', 'user__username')
-    readonly_fields = ('user', 'submission_date', 'last_modified_date', 'download_link', 'pdf_file_link')
+    readonly_fields = ('user', 'submission_date', 'last_modified_date', 'download_link', 'itinerary_download_link', 'pdf_file_link', 'itinerary_file_link')
     actions = ['download_approved_invoices', 'delete_unapproved_requests', 'export_approved_to_excel', 'delete_pdf_files']
     fieldsets = (
-        ('申请详情', {'fields': ('user', 'real_name', 'reason', 'amount', 'invoice_pdf', 'remarks')}),
+        ('申请详情', {'fields': ('user', 'real_name', 'reason', 'amount', 'invoice_pdf', 'is_taxi_invoice', 'itinerary_pdf', 'remarks')}),
         ('审核区域', {'fields': ('status', 'rejection_reason')}),
         ('日期信息', {'fields': ('submission_date', 'last_modified_date')}),
-        ('文件管理', {'fields': ('download_link', 'pdf_file_link')}),
+        ('文件管理', {'fields': ('download_link', 'itinerary_download_link', 'pdf_file_link', 'itinerary_file_link')}),
     )
     
     def download_link(self, obj):
-        """显示下载链接"""
+        """显示发票下载链接"""
         if obj.invoice_pdf and obj.status == 'approved':
             url = obj.invoice_pdf.url
             filename = os.path.basename(obj.invoice_pdf.name)
@@ -36,6 +36,17 @@ class ReimbursementRequestAdmin(admin.ModelAdmin):
             return '<span style="color: #999;">⏳ 待审核通过后可下载</span>'
         return '<span style="color: #ccc;">无文件</span>'
     download_link.short_description = '发票下载'
+    
+    def itinerary_download_link(self, obj):
+        """显示行程单下载链接"""
+        if obj.itinerary_pdf and obj.status == 'approved':
+            url = obj.itinerary_pdf.url
+            filename = os.path.basename(obj.itinerary_pdf.name)
+            return format_html('<a href="{}" download="{}" target="_blank">📥 下载行程单</a>', url, filename)
+        elif obj.itinerary_pdf:
+            return '<span style="color: #999;">⏳ 待审核通过后可下载</span>'
+        return '<span style="color: #ccc;">无行程单</span>'
+    itinerary_download_link.short_description = '行程单下载'
     
     def download_approved_invoices(self, request, queryset):
         """批量下载已审核通过的发票（打包成ZIP）"""
@@ -84,7 +95,13 @@ class ReimbursementRequestAdmin(admin.ModelAdmin):
                     if os.path.exists(req.invoice_pdf.path):
                         os.remove(req.invoice_pdf.path)
                 except Exception as e:
-                    self.message_user(request, f'文件删除失败: {str(e)}', level='error')
+                    self.message_user(request, f'发票文件删除失败: {str(e)}', level='error')
+            if req.itinerary_pdf:
+                try:
+                    if os.path.exists(req.itinerary_pdf.path):
+                        os.remove(req.itinerary_pdf.path)
+                except Exception as e:
+                    self.message_user(request, f'行程单文件删除失败: {str(e)}', level='error')
             # 删除数据库记录
             req.delete()
             deleted_count += 1
@@ -119,6 +136,33 @@ class ReimbursementRequestAdmin(admin.ModelAdmin):
         return format_html('<span style="color: #999;">无PDF文件</span>')
     
     pdf_file_link.short_description = 'PDF文件信息'
+    
+    def itinerary_file_link(self, obj):
+        """显示行程单文件信息"""
+        if obj.itinerary_pdf:
+            filename = os.path.basename(obj.itinerary_pdf.name)
+            file_size = ''
+            try:
+                size_bytes = obj.itinerary_pdf.size
+                if size_bytes < 1024:
+                    file_size = f'{size_bytes} B'
+                elif size_bytes < 1024 * 1024:
+                    file_size = f'{size_bytes / 1024:.1f} KB'
+                else:
+                    file_size = f'{size_bytes / (1024 * 1024):.1f} MB'
+            except:
+                file_size = '未知大小'
+            
+            return format_html(
+                '<div style="padding: 8px; background: #f8f9fa; border-radius: 4px;">'
+                '<div style="margin-bottom: 4px;"><strong>📄 {}</strong></div>'
+                '<div style="color: #666; font-size: 12px;">文件大小: {}</div>'
+                '</div>',
+                filename, file_size
+            )
+        return format_html('<span style="color: #999;">无行程单文件</span>')
+    
+    itinerary_file_link.short_description = '行程单文件信息'
     
     def delete_pdf_files(self, request, queryset):
         """批量删除选中申请的PDF文件"""

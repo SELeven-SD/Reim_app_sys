@@ -35,14 +35,16 @@ class ReimbursementRequestSerializer(serializers.ModelSerializer):
     user = serializers.StringRelatedField(read_only=True)
     invoice_pdf = serializers.FileField(required=True)  # 可读可写，新建时必须
     invoice_pdf_url = serializers.SerializerMethodField()  # 只读，用于返回完整URL
+    itinerary_pdf = serializers.FileField(required=False)  # 行程单可选
+    itinerary_pdf_url = serializers.SerializerMethodField()  # 只读，用于返回完整URL
     
     class Meta:
         model = ReimbursementRequest
-        fields = ['id', 'user', 'real_name', 'reason', 'amount', 'invoice_pdf', 'invoice_pdf_url', 'remarks', 'status', 'rejection_reason', 'submission_date']
-        read_only_fields = ['id', 'user', 'status', 'rejection_reason', 'submission_date', 'invoice_pdf_url']
+        fields = ['id', 'user', 'real_name', 'reason', 'amount', 'invoice_pdf', 'invoice_pdf_url', 'is_taxi_invoice', 'itinerary_pdf', 'itinerary_pdf_url', 'remarks', 'status', 'rejection_reason', 'submission_date']
+        read_only_fields = ['id', 'user', 'status', 'rejection_reason', 'submission_date', 'invoice_pdf_url', 'itinerary_pdf_url']
     
     def get_invoice_pdf_url(self, obj):
-        """返回PDF文件的完整访问URL"""
+        """返回发票PDF文件的完整访问URL"""
         if obj.invoice_pdf and obj.invoice_pdf.name:
             request = self.context.get('request')
             if request:
@@ -50,44 +52,66 @@ class ReimbursementRequestSerializer(serializers.ModelSerializer):
             return obj.invoice_pdf.url
         return None
     
+    def get_itinerary_pdf_url(self, obj):
+        """返回行程单PDF文件的完整访问URL"""
+        if obj.itinerary_pdf and obj.itinerary_pdf.name:
+            request = self.context.get('request')
+            if request:
+                return request.build_absolute_uri(obj.itinerary_pdf.url)
+            return obj.itinerary_pdf.url
+        return None
+    
     def to_representation(self, instance):
         """自定义返回格式，保持向后兼容"""
         ret = super().to_representation(instance)
         # 同时提供invoice_pdf（URL）和invoice_pdf_url字段，保持兼容性
         ret['invoice_pdf'] = ret.get('invoice_pdf_url')
+        ret['itinerary_pdf'] = ret.get('itinerary_pdf_url')
         return ret
 
 class ReimbursementRequestUpdateSerializer(serializers.ModelSerializer):
     invoice_pdf = serializers.FileField(required=False)  # 重新提交时发票可选
+    itinerary_pdf = serializers.FileField(required=False)  # 行程单可选
     
     class Meta:
         model = ReimbursementRequest
-        fields = ['real_name', 'reason', 'amount', 'invoice_pdf', 'remarks']
+        fields = ['real_name', 'reason', 'amount', 'invoice_pdf', 'is_taxi_invoice', 'itinerary_pdf', 'remarks']
     
     def update(self, instance, validated_data):
         """更新时，如果上传了新的PDF，删除旧的PDF文件"""
         import os
         
-        # 检查是否上传了新的PDF文件
-        new_pdf = validated_data.get('invoice_pdf')
-        if new_pdf and instance.invoice_pdf:
-            # 获取旧文件的路径
-            old_file_path = instance.invoice_pdf.path
-            
-            # 先更新实例（这会保存新文件）
-            instance = super().update(instance, validated_data)
-            
-            # 删除旧文件
-            if os.path.exists(old_file_path):
-                try:
-                    os.remove(old_file_path)
-                except Exception as e:
-                    print(f"删除旧文件失败: {old_file_path}, 错误: {e}")
-            
-            return instance
+        # 检查是否上传了新的发票PDF文件
+        new_invoice_pdf = validated_data.get('invoice_pdf')
+        new_itinerary_pdf = validated_data.get('itinerary_pdf')
         
-        # 如果没有上传新PDF，正常更新
-        return super().update(instance, validated_data)
+        old_invoice_path = None
+        old_itinerary_path = None
+        
+        if new_invoice_pdf and instance.invoice_pdf:
+            old_invoice_path = instance.invoice_pdf.path
+        
+        if new_itinerary_pdf and instance.itinerary_pdf:
+            old_itinerary_path = instance.itinerary_pdf.path
+        
+        # 更新实例（这会保存新文件）
+        instance = super().update(instance, validated_data)
+        
+        # 删除旧的发票文件
+        if old_invoice_path and os.path.exists(old_invoice_path):
+            try:
+                os.remove(old_invoice_path)
+            except Exception as e:
+                print(f"删除旧发票文件失败: {old_invoice_path}, 错误: {e}")
+        
+        # 删除旧的行程单文件
+        if old_itinerary_path and os.path.exists(old_itinerary_path):
+            try:
+                os.remove(old_itinerary_path)
+            except Exception as e:
+                print(f"删除旧行程单文件失败: {old_itinerary_path}, 错误: {e}")
+        
+        return instance
 class NoticeSerializer(serializers.ModelSerializer):
     class Meta:
         model = Notice

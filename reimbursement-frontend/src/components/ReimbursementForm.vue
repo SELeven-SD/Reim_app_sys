@@ -31,6 +31,14 @@
         <input id="amount" type="number" step="0.01" v-model="formData.amount" required placeholder="0.00">
          <div v-if="errors.amount" class="error-text">{{ errors.amount[0] }}</div>
       </div>
+      
+      <div class="form-group">
+        <div class="checkbox-group">
+          <input id="is_taxi_invoice" type="checkbox" v-model="formData.is_taxi_invoice">
+          <label for="is_taxi_invoice" class="checkbox-label">🚕 这是打车发票</label>
+        </div>
+      </div>
+      
       <div class="form-group">
         <label for="invoice_pdf">📎 发票 (PDF格式，最大50MB)</label>
         <input id="invoice_pdf" type="file" @change="handleFileUpload" accept="application/pdf" :required="!isResubmit">
@@ -39,6 +47,16 @@
         </div>
          <div v-if="errors.invoice_pdf" class="error-text">{{ errors.invoice_pdf[0] }}</div>
       </div>
+      
+      <div v-if="formData.is_taxi_invoice" class="form-group">
+        <label for="itinerary_pdf">🗺️ 行程单 (PDF格式，最大50MB)</label>
+        <input id="itinerary_pdf" type="file" @change="handleItineraryUpload" accept="application/pdf">
+        <div v-if="isResubmit && !formData.itinerary_pdf" class="info-text">
+          💡 如需更换行程单请重新上传，否则将保留原行程单
+        </div>
+        <div v-if="errors.itinerary_pdf" class="error-text">{{ errors.itinerary_pdf[0] }}</div>
+      </div>
+      
       <div class="form-group">
         <label for="remarks">📋 备注（选填）</label>
         <textarea id="remarks" v-model="formData.remarks" placeholder="如有补充说明，请在此填写"></textarea>
@@ -58,7 +76,7 @@ import axios from 'axios';
 
 const route = useRoute();
 const router = useRouter();
-const formData = ref({ real_name: '', reason: '', amount: '', remarks: '', invoice_pdf: null });
+const formData = ref({ real_name: '', reason: '', amount: '', remarks: '', invoice_pdf: null, is_taxi_invoice: false, itinerary_pdf: null });
 const errors = ref({});
 const serverError = ref('');
 const isLoading = ref(false);
@@ -76,6 +94,7 @@ onMounted(() => {
     formData.value.reason = route.query.reason || '';
     formData.value.amount = route.query.amount || '';
     formData.value.remarks = route.query.remarks || '';
+    formData.value.is_taxi_invoice = route.query.isTaxiInvoice === 'true';
     
     // 清除URL参数以避免刷新时重复填充
     router.replace({ path: '/', query: {} });
@@ -97,6 +116,21 @@ function handleFileUpload(event) {
   }
 }
 
+function handleItineraryUpload(event) {
+  const file = event.target.files[0];
+  if (file) {
+    const maxSize = 50 * 1024 * 1024; // 50MB
+    if (file.size > maxSize) {
+      serverError.value = '文件太大！行程单文件不能超过50MB，请压缩后重新上传。';
+      event.target.value = null;
+      formData.value.itinerary_pdf = null;
+      return;
+    }
+    formData.value.itinerary_pdf = file;
+    serverError.value = '';
+  }
+}
+
 async function submitForm() {
   isLoading.value = true;
   errors.value = {};
@@ -114,10 +148,15 @@ async function submitForm() {
       data.append('reason', formData.value.reason);
       data.append('amount', formData.value.amount);
       data.append('remarks', formData.value.remarks || '');
+      data.append('is_taxi_invoice', formData.value.is_taxi_invoice);
       
       // 只有在用户选择了新文件时才添加
       if (formData.value.invoice_pdf instanceof File) {
         data.append('invoice_pdf', formData.value.invoice_pdf);
+      }
+      
+      if (formData.value.itinerary_pdf instanceof File) {
+        data.append('itinerary_pdf', formData.value.itinerary_pdf);
       }
       
       await axios.patch(`/api/reimbursements/${resubmitId.value}/`, data, {
@@ -133,18 +172,26 @@ async function submitForm() {
       data.append('reason', formData.value.reason);
       data.append('amount', formData.value.amount);
       if (formData.value.remarks) data.append('remarks', formData.value.remarks);
+      data.append('is_taxi_invoice', formData.value.is_taxi_invoice);
       
       // 新提交必须有发票
       if (formData.value.invoice_pdf) {
         data.append('invoice_pdf', formData.value.invoice_pdf);
       }
       
+      // 如果是打车发票且有行程单，添加行程单
+      if (formData.value.is_taxi_invoice && formData.value.itinerary_pdf) {
+        data.append('itinerary_pdf', formData.value.itinerary_pdf);
+      }
+      
       await axios.post('/api/reimbursements/', data, {
         headers: { 'Content-Type': 'multipart/form-data', 'Authorization': `Bearer ${token}` }
       });
       alert('✅ 提交成功！您的报销申请已提交，请等待审核。');
-      formData.value = { real_name: '', reason: '', amount: '', remarks: '', invoice_pdf: null };
+      formData.value = { real_name: '', reason: '', amount: '', remarks: '', invoice_pdf: null, is_taxi_invoice: false, itinerary_pdf: null };
       document.getElementById('invoice_pdf').value = null;
+      const itineraryInput = document.getElementById('itinerary_pdf');
+      if (itineraryInput) itineraryInput.value = null;
     }
   } catch (error) {
     if (error.response) {
@@ -231,6 +278,31 @@ input[type="file"] {
 input[type="file"]:hover {
   border-color: #3b82f6;
   background: white;
+}
+
+.checkbox-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  background: #f0f9ff;
+  border-radius: 6px;
+  border: 1px solid #bfdbfe;
+}
+
+.checkbox-group input[type="checkbox"] {
+  width: 1.25rem;
+  height: 1.25rem;
+  cursor: pointer;
+  accent-color: #3b82f6;
+}
+
+.checkbox-label {
+  margin: 0 !important;
+  font-weight: 500;
+  color: #1e40af;
+  cursor: pointer;
+  user-select: none;
 }
 
 textarea {

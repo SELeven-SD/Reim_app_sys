@@ -89,6 +89,15 @@
               查看发票PDF
             </a>
           </div>
+          
+          <div v-if="item.is_taxi_invoice && item.itinerary_pdf" class="pdf-link-container">
+            <a :href="item.itinerary_pdf" target="_blank" class="pdf-link itinerary-link">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M9 17l3 3 3-3M9 7l3-3 3 3M12 3v18"/>
+              </svg>
+              查看行程单PDF
+            </a>
+          </div>
         </div>
         
         <!-- 待审核状态 - 可以撤回修改 -->
@@ -222,7 +231,8 @@ function handleResubmit(id) {
         realName: item.real_name,
         reason: item.reason,
         amount: item.amount,
-        remarks: item.remarks || ''
+        remarks: item.remarks || '',
+        isTaxiInvoice: item.is_taxi_invoice || false
       }
     });
   }
@@ -540,6 +550,8 @@ h2 {
   font-weight: 500;
   font-size: 0.9rem;
   transition: all 0.2s ease;
+  margin-right: 0.75rem;
+  margin-bottom: 0.5rem;
 }
 
 .pdf-link svg {
@@ -550,6 +562,15 @@ h2 {
 .pdf-link:hover {
   background: #2563eb;
   box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+}
+
+.pdf-link.itinerary-link {
+  background: #10b981;
+}
+
+.pdf-link.itinerary-link:hover {
+  background: #059669;
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
 }
 
 .rejection-alert {
