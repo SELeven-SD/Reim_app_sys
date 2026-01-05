@@ -68,6 +68,15 @@
           >
         </div>
         
+        <div v-if="!isLogin" class="password-warning">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="12" y1="8" x2="12" y2="12"></line>
+            <line x1="12" y1="16" x2="12.01" y2="16"></line>
+          </svg>
+          <span>务必牢记密码，注册成功后仅管理员可修改密码</span>
+        </div>
+        
         <button type="submit" :disabled="isLoading" class="submit-btn">
           {{ isLoading ? '处理中...' : (isLogin ? '登录' : '注册') }}
         </button>
@@ -492,6 +501,26 @@ input::placeholder {
   border-left: 4px solid #059669;
   font-size: 0.9rem;
   box-shadow: 0 2px 8px rgba(5, 150, 105, 0.1);
+}
+
+.password-warning {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  background: linear-gradient(135deg, #fef3c7, #fde68a);
+  color: #92400e;
+  padding: 0.85rem 1rem;
+  border-radius: 8px;
+  margin-bottom: 1.5rem;
+  border-left: 4px solid #fbbf24;
+  font-size: 0.9rem;
+  box-shadow: 0 2px 8px rgba(251, 191, 36, 0.15);
+  font-weight: 500;
+}
+
+.password-warning svg {
+  flex-shrink: 0;
+  color: #d97706;
 }
 
 /* 响应式调整 */
