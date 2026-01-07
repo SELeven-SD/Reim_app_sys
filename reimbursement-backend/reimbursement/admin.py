@@ -9,7 +9,7 @@ from django.utils.html import format_html
 from django.urls import path
 from openpyxl import Workbook
 from openpyxl.styles import Font, Alignment, PatternFill
-from .models import ReimbursementRequest, Notice
+from .models import ReimbursementRequest, Notice, AccountBook
 from .admin_site import restricted_admin_site
 
 @admin.register(ReimbursementRequest, site=restricted_admin_site)
@@ -269,3 +269,150 @@ class NoticeAdmin(admin.ModelAdmin):
     )
     readonly_fields = ('created_at', 'updated_at')
     ordering = ['-priority', '-created_at']
+
+@admin.register(AccountBook, site=restricted_admin_site)
+class AccountBookAdmin(admin.ModelAdmin):
+    list_display = ('entry_date', 'real_name', 'reason', 'amount_display', 'entry_type', 'remarks_short', 'reimbursement_link')
+    list_filter = ('entry_type', 'entry_date')
+    search_fields = ('real_name', 'reason', 'remarks')
+    date_hierarchy = 'entry_date'
+    actions = ['export_to_excel', 'calculate_balance']
+    
+    fieldsets = (
+        ('记账信息', {
+            'fields': ('entry_date', 'entry_type', 'real_name', 'reason', 'amount', 'remarks')
+        }),
+        ('关联信息', {
+            'fields': ('reimbursement', 'created_by', 'created_at'),
+            'classes': ('collapse',)
+        }),
+    )
+    
+    readonly_fields = ('created_at', 'created_by')
+    
+    def get_readonly_fields(self, request, obj=None):
+        """如果是从报销自动生成的，大部分字段只读"""
+        if obj and obj.reimbursement:
+            return self.readonly_fields + ('entry_date', 'real_name', 'reason', 'amount', 'reimbursement')
+        return self.readonly_fields
+    
+    def save_model(self, request, obj, form, change):
+        """保存时记录创建人"""
+        if not change:  # 新建时
+            obj.created_by = request.user
+        super().save_model(request, obj, form, change)
+    
+    def amount_display(self, obj):
+        """格式化金额显示"""
+        if obj.entry_type == 'income':
+            return format_html('<span style="color: green;">+¥{}</span>', f'{obj.amount:.2f}')
+        else:
+            return format_html('<span style="color: red;">-¥{}</span>', f'{obj.amount:.2f}')
+    amount_display.short_description = '金额'
+    
+    def remarks_short(self, obj):
+        """备注简短显示"""
+        if obj.remarks:
+            return obj.remarks[:50] + '...' if len(obj.remarks) > 50 else obj.remarks
+        return '-'
+    remarks_short.short_description = '备注'
+    
+    def reimbursement_link(self, obj):
+        """显示关联的报销申请链接"""
+        if obj.reimbursement:
+            url = f'/admin/reimbursement/reimbursementrequest/{obj.reimbursement.id}/change/'
+            return format_html('<a href="{}" target="_blank">查看报销申请</a>', url)
+        return '-'
+    reimbursement_link.short_description = '关联报销'
+    
+    def export_to_excel(self, request, queryset):
+        """导出选中的记账记录到Excel"""
+        # 创建工作簿
+        wb = Workbook()
+        ws = wb.active
+        ws.title = "财务记账本"
+        
+        # 设置表头样式
+        header_fill = PatternFill(start_color='4472C4', end_color='4472C4', fill_type='solid')
+        header_font = Font(color='FFFFFF', bold=True, size=12)
+        header_alignment = Alignment(horizontal='center', vertical='center')
+        
+        # 表头
+        headers = ['记账日期', '提交人姓名', '报销事由', '金额', '备注']
+        for col_num, header in enumerate(headers, 1):
+            cell = ws.cell(row=1, column=col_num, value=header)
+            cell.fill = header_fill
+            cell.font = header_font
+            cell.alignment = header_alignment
+        
+        # 设置列宽
+        ws.column_dimensions['A'].width = 20
+        ws.column_dimensions['B'].width = 15
+        ws.column_dimensions['C'].width = 30
+        ws.column_dimensions['D'].width = 15
+        ws.column_dimensions['E'].width = 40
+        
+        # 填充数据
+        for row_num, entry in enumerate(queryset.order_by('entry_date'), 2):
+            ws.cell(row=row_num, column=1, value=entry.entry_date.strftime('%Y-%m-%d %H:%M'))
+            ws.cell(row=row_num, column=2, value=entry.real_name)
+            ws.cell(row=row_num, column=3, value=entry.reason)
+            
+            # 金额显示（收入为正，支出为负）
+            amount_value = float(entry.amount) if entry.entry_type == 'income' else -float(entry.amount)
+            amount_cell = ws.cell(row=row_num, column=4, value=amount_value)
+            amount_cell.number_format = '#,##0.00'
+            
+            ws.cell(row=row_num, column=5, value=entry.remarks or '')
+        
+        # 保存到BytesIO
+        output = BytesIO()
+        wb.save(output)
+        output.seek(0)
+        
+        # 返回Excel文件
+        filename = f'财务记账本_{datetime.now().strftime("%Y%m%d_%H%M%S")}.xlsx'
+        response = HttpResponse(
+            output.read(),
+            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        )
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        
+        self.message_user(request, f'成功导出 {queryset.count()} 条记账记录到Excel')
+        return response
+    
+    export_to_excel.short_description = '📊 导出选中记录到Excel'
+    
+    def calculate_balance(self, request, queryset):
+        """计算账户余额"""
+        from decimal import Decimal
+        
+        # 计算所有记录（不仅是选中的）
+        all_entries = AccountBook.objects.all()
+        
+        total_income = Decimal('0.00')
+        total_expense = Decimal('0.00')
+        
+        for entry in all_entries:
+            if entry.entry_type == 'income':
+                total_income += entry.amount
+            else:  # reimbursement 或 expense
+                total_expense += entry.amount
+        
+        balance = total_income - total_expense
+        
+        # 显示消息
+        message = (
+            f'💰 账户余额计算结果：\n'
+            f'总收入：¥{total_income:,.2f}\n'
+            f'总支出：¥{total_expense:,.2f}\n'
+            f'当前余额：¥{balance:,.2f}'
+        )
+        
+        if balance >= 0:
+            self.message_user(request, message, level='success')
+        else:
+            self.message_user(request, message + '\n⚠️ 警告：余额不足！', level='warning')
+    
+    calculate_balance.short_description = '💰 计算账户余额'
+

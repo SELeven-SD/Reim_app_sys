@@ -3,7 +3,7 @@ import os
 from uuid import uuid4
 from django.db import models
 from django.contrib.auth.models import User
-from django.db.models.signals import pre_delete, post_delete
+from django.db.models.signals import pre_delete, post_delete, post_save
 from django.dispatch import receiver
 from datetime import datetime
 
@@ -57,6 +57,39 @@ class Notice(models.Model):
     def __str__(self):
         return self.title
 
+class AccountBook(models.Model):
+    """财务记账本"""
+    ENTRY_TYPE_CHOICES = [
+        ('reimbursement', '报销支出'),
+        ('income', '收入'),
+        ('expense', '其他支出'),
+    ]
+    
+    entry_date = models.DateTimeField(verbose_name="记账日期")
+    entry_type = models.CharField(max_length=20, choices=ENTRY_TYPE_CHOICES, default='reimbursement', verbose_name="类型")
+    real_name = models.CharField(max_length=100, verbose_name="提交人姓名")
+    reason = models.CharField(max_length=255, verbose_name="事由")
+    amount = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="金额")
+    remarks = models.TextField(blank=True, verbose_name="备注")
+    reimbursement = models.ForeignKey(
+        ReimbursementRequest, 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        blank=True, 
+        verbose_name="关联报销申请",
+        help_text="如果是从报销申请自动生成的，会有关联"
+    )
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="创建时间")
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, verbose_name="创建人")
+    
+    class Meta:
+        verbose_name = "财务记账本"
+        verbose_name_plural = "财务记账本"
+        ordering = ['-entry_date', '-created_at']
+    
+    def __str__(self):
+        return f"{self.entry_date.strftime('%Y-%m-%d')} - {self.real_name} - {self.reason} - ¥{self.amount}"
+
 # 信号处理：删除报销申请时自动删除关联的PDF文件
 @receiver(post_delete, sender=ReimbursementRequest)
 def delete_invoice_file(sender, instance, **kwargs):
@@ -74,3 +107,26 @@ def delete_invoice_file(sender, instance, **kwargs):
                 os.remove(instance.itinerary_pdf.path)
             except Exception as e:
                 print(f"删除行程单文件失败: {instance.itinerary_pdf.path}, 错误: {e}")
+
+# 信号处理：报销申请审核通过时自动添加到记账本
+@receiver(post_save, sender=ReimbursementRequest)
+def add_to_account_book(sender, instance, created, **kwargs):
+    """当报销申请状态变为审核通过时，自动添加到记账本"""
+    # 只处理审核通过的情况
+    if instance.status == 'approved':
+        # 检查是否已经添加到记账本（避免重复）
+        existing = AccountBook.objects.filter(reimbursement=instance).first()
+        
+        if not existing:
+            # 创建记账本记录
+            AccountBook.objects.create(
+                entry_date=instance.submission_date,
+                entry_type='reimbursement',
+                real_name=instance.real_name,
+                reason=instance.reason,
+                amount=instance.amount,
+                remarks=instance.remarks or f'报销申请 #{instance.id}',
+                reimbursement=instance,
+                created_by=instance.user
+            )
+            print(f"✅ 报销申请 #{instance.id} 已自动添加到记账本")
