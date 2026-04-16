@@ -16,30 +16,21 @@ class RestrictedTokenObtainPairView(TokenObtainPairView):
     """限制只有超级用户或管理员才能登录"""
     
     def post(self, request, *args, **kwargs):
-        # 先获取用户名
-        username = request.data.get('username')
+        # 调用父类方法进行正常的 token 生成（包含认证失败处理）
+        response = super().post(request, *args, **kwargs)
         
-        if not username:
-            return Response(
-                {"detail": "请提供用户名"},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        
-        try:
-            user = User.objects.get(username=username)
-            
-            # 检查用户是否有权限访问后台
-            if not (user.is_superuser or user.is_staff):
+        # 仅在认证成功后再检查权限，避免用户名枚举攻击
+        if response.status_code == status.HTTP_200_OK:
+            username = request.data.get('username', '')
+            user = User.objects.filter(username=username).first()
+            if user is None or not (user.is_superuser or user.is_staff):
+                # 返回与认证失败相同的状态码，避免泄露用户是否存在
                 return Response(
-                    {"detail": "您没有权限访问系统，请联系管理员"},
-                    status=status.HTTP_403_FORBIDDEN
+                    {"detail": "用户名或密码错误"},
+                    status=status.HTTP_401_UNAUTHORIZED
                 )
-        except User.DoesNotExist:
-            # 用户不存在，让默认的认证流程处理（会返回认证失败）
-            pass
         
-        # 调用父类方法进行正常的 token 生成
-        return super().post(request, *args, **kwargs)
+        return response
 
 class UserRegistrationView(generics.CreateAPIView):
     queryset = User.objects.all()
