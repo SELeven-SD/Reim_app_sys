@@ -7,7 +7,7 @@ from reimbursement.views import UserRegistrationView, RestrictedTokenObtainPairV
 from reimbursement.admin_site import restricted_admin_site
 
 urlpatterns = [
-    path('admin/', restricted_admin_site.urls),
+    path(settings.ADMIN_URL, restricted_admin_site.urls),
     path('api/token/', RestrictedTokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('api/register/', UserRegistrationView.as_view(), name='user_register'),

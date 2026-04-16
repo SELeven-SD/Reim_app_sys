@@ -7,3 +7,4 @@ gunicorn>=20.1
 pandas>=1.4
 openpyxl>=3.0
 python-decouple>=3.6 # 用于管理环境变量
+django-axes>=7.0.1 # 防暴力破解：登录失败超限自动锁定

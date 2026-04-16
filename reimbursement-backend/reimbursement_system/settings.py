@@ -19,6 +19,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'rest_framework_simplejwt',
     'corsheaders',
+    'axes',
     'reimbursement',
 ]
 
@@ -30,6 +31,7 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'axes.middleware.AxesMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
@@ -102,3 +104,24 @@ CSRF_TRUSTED_ORIGINS = [
 # 使用Nginx代理的Host头
 USE_X_FORWARDED_HOST = True
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
+# ── 安全响应头配置 ──────────────────────────────────────────────────────────
+# 禁止浏览器将响应内容嗅探为其他 MIME 类型
+SECURE_CONTENT_TYPE_NOSNIFF = True
+# 禁止被任何页面嵌入为 <iframe>（防点击劫持）
+X_FRAME_OPTIONS = 'DENY'
+
+# ── Admin 路径通过环境变量配置（不使用默认 admin/ 路径）───────────────────────
+ADMIN_URL = config('ADMIN_URL', default='manage-panel/')
+
+# ── django-axes 防暴力破解配置 ────────────────────────────────────────────
+AXES_FAILURE_LIMIT = 5           # 允许最多 5 次失败
+AXES_COOLOFF_TIME = 24           # 锁定 24 小时
+AXES_LOCK_OUT_AT_FAILURE = True  # 超限后锁定
+AXES_LOCKOUT_PARAMETERS = ['ip_address', 'username']  # 按 IP + 用户名双维度锁定
+AXES_RESET_ON_SUCCESS = True     # 登录成功后自动解锁
+
+AUTHENTICATION_BACKENDS = [
+    'axes.backends.AxesStandaloneBackend',
+    'django.contrib.auth.backends.ModelBackend',
+]
